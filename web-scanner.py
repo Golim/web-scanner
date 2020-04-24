@@ -16,7 +16,11 @@ def conditional_print(str, end='\n'):
     if not QUIET:
         print(str, end=end)
 
-def scan_for_file(url):
+def print_usage():
+    print("USAGE: ./web-scanner.py -t target [OPTIONS]")
+    print("type:  ./web-scanner.py -h/--help for a help message")
+
+def scan_for_files(url):
     # Check for files
     for file_name in files_list:
         conditional_print('Scanning for ' + file_name, end=' ... ')
@@ -47,7 +51,8 @@ def scan_for_cookies(url):
     response = session.get(url)
     cookies = session.cookies.get_dict()
     if cookies:
-        conditional_print('Looking for Cookies')
+        if QUIET:
+            print('Looking for Cookies')
         for cookie in cookies:
             print(cookie, cookies[cookie])
     else:
@@ -65,45 +70,63 @@ def search_in_page(url, search):
     if not found:
         conditional_print(search + ' not found')
 
+def print_all_comments(url):
+    conditional_print('Looking for comments in ' + url)
+    response = requests.get(url)
+    content = response.content.decode().split('\n')
+    more_lines = False
+    for line in content:
+        if more_lines:
+            if line.find('-->'):
+                print(line.split('-->')[0] + '-->')
+                more_lines = False
+            else:
+                print(line)
+
+        if line.find('<!--') > 0:
+            # If inline comment
+            if line.find('-->'):
+                print('<!--' + line.split('<!--')[1].split('-->')[0] + '-->')
+            
+            else:
+                more_lines = True
+                print('<!--' + line.split('<!--')[1])
+
 def main(args):
-    # Scan for files, cookies and (TODO) directories
-    if args.target:
-        base_url = args.target
-        if not (base_url.startswith('http://') or base_url.startswith('https://')):
-            base_url = 'http://' + base_url
+    
+    target_url = args.target
+    if not (target_url.startswith('http://') or target_url.startswith('https://')):
+        target_url = 'http://' + target_url
 
-        if not base_url.endswith('/'):
-            base_url += '/'
+    # Scan for files
+    if args.files:
+        if not target_url.endswith('/'):
+            target_url += '/'
 
-        print('Start scanning', base_url, '\n')
+        print('Start scanning', target_url, '\n')
         
         # Scan for files
-        scan_for_file(base_url)
+        scan_for_files(target_url)
         conditional_print('\n')
 
-        # Scan for files
-        scan_for_cookies(base_url)
+    if args.cookies or args.all:
+        # Scan for cookies
+        scan_for_cookies(target_url)
         conditional_print('\n')
 
     # Search in a web page
-    if args.search:
-        try:
-            web_page, search = args.search
-        except:
-            print('Something bad happened')
-            return
+    if args.search or args.all:
+        search = args.search
+        search_in_page(target_url, search)
 
-        if not (web_page.startswith('http://') or web_page.startswith('https://')):
-            web_page = 'http://' + web_page
-        
-        search_in_page(web_page, search)
-
+    if args.comments or args.all:
+        print_all_comments(target_url)
 
 
 if __name__ == '__main__':
     # Setup the arguments accepted by the program
-    parser = argparse.ArgumentParser(prog='WEB SCANNER',
-        description='Scan a website for sensitive files, cookies and optionally directories. Useful for CTF challenges')
+    parser = argparse.ArgumentParser(prog='WEB_SCANNER',
+        description='Scan a website for sensitive files, cookies, comments, and search terms. Useful for CTF challenges')
 
     #Version
     parser.add_argument('-v', '--version', action='version', version='%(prog)s 0.1')
@@ -113,10 +136,22 @@ if __name__ == '__main__':
     # TODO: parser.add_argument('--verbose', help='', action='store_true')
 
     # Target URL 
-    parser.add_argument('-t', '--target', help='define the target URL to scan for files and cookies', action='store')
+    parser.add_argument('-t', '--target', help='define the target URL to scan', action='store')
+    
+    # Search Files
+    parser.add_argument('-f', '--files', help='search for files in the target website', action='store_true')
 
+    # Search Cookies
+    parser.add_argument('-c', '--cookies', help='search for cookies on the target website', action='store_true')
+
+    # Search all comments
+    parser.add_argument('--comments', help='print all comments in the target website\'s code', action='store_true')
+    
     # Search in page
-    parser.add_argument('--search', help='search for a string in a web page', action='store', nargs=2, type=str, metavar=('\"PAGE URL\"', '\"SEARCH TERM\"'))
+    parser.add_argument('-s', '--search', help='search for a string in the target website\'s code', action='store', type=str, metavar=('\"SEARCH_TERM\"'))
+
+    # Search for everything TODO
+    parser.add_argument('-a', '--all', help='do everything', action='store', type=str, metavar=('\"SEARCH_TERM\"'))
 
     # Argcomplete support
     argcomplete = importlib.util.find_spec('argcomplete')
@@ -132,14 +167,15 @@ if __name__ == '__main__':
     if args.quiet:
         QUIET = True
 
-    if args.target is None and args.search is None:
-        print("USAGE: ./web-scanner.py [OPTIONS] [TARGET URL]")
-        print("type:  ./web-scanner.py -h/--help for a help message")
+    if args.target is not None:
+        if args.files is None \
+            and args.cookies is None \
+            and args.comments is None \
+            and args.search is None\
+            and args.all is None:
+
+            printUsage()
+    else:
+        print_usage()
 
     main(args)
-
-'''
-TODO:
-- Add possibility to call dirb directly from the program
-    - Call dirb on the directories found in the robots.txt
-'''
