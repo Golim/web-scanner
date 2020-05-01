@@ -19,6 +19,7 @@ def conditional_print(str, end='\n'):
 def print_usage():
     print("USAGE: ./web-scanner.py -t target [OPTIONS]")
     print("type:  ./web-scanner.py -h/--help for a help message")
+    exit(1)
 
 def scan_for_files(url):
     # Check for files
@@ -77,17 +78,18 @@ def print_all_comments(url):
     more_lines = False
     for line in content:
         if more_lines:
+            # End of multiple-lines comment
             if line.find('-->'):
                 print(line.split('-->')[0] + '-->')
                 more_lines = False
             else:
                 print(line)
 
-        if line.find('<!--') > 0:
+        if line.find('<!--') >= 0:
             # If inline comment
             if line.find('-->'):
                 print('<!--' + line.split('<!--')[1].split('-->')[0] + '-->')
-            
+            # Comment split on more lines
             else:
                 more_lines = True
                 print('<!--' + line.split('<!--')[1])
