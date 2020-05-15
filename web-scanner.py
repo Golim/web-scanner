@@ -117,8 +117,11 @@ def main(args):
         conditional_print('\n')
 
     # Search in a web page
-    if args.search or args.all:
+    if args.search:
         search = args.search
+        search_in_page(target_url, search)
+    if args.all:
+        search = args.all
         search_in_page(target_url, search)
 
     if args.comments or args.all:
@@ -160,8 +163,6 @@ if __name__ == '__main__':
     if argcomplete is not None:
         import argcomplete
         argcomplete.autocomplete(parser)
-
-    argcomplete.autocomplete(parser)
 
     # Parse arguments
     args = parser.parse_args()
