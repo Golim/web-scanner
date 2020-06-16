@@ -142,16 +142,18 @@ def main(args):
 
     # Scan for files
     if args.files or args.all:
+        local_target_url = target_url
         if not target_url.endswith('/'):
-            local_target_url = target_url + '/'
+            local_target_url += '/'
 
         scan_for_files(local_target_url)
         conditional_print('\n')
 
     # Scan for directories
     if args.directories or args.all:
+        local_target_url = target_url
         if not target_url.endswith('/'):
-            local_target_url = target_url + '/'
+            local_target_url += '/'
 
         scan_for_directories(local_target_url)
         conditional_print('\n')
