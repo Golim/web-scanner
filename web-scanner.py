@@ -81,12 +81,38 @@ def search_in_page(url, search):
     if not found:
         conditional_print(f'{search} not found')
 
+# TODO: add support for CSS comments if .css and JavaScript if .js
 def print_all_comments(url):
     conditional_print('Looking for comments in ' + url)
     response = requests.get(url)
     content = response.content.decode().split('\n')
     more_lines = False
     found = False
+
+    if url.endswith('.css') or url.endswith('.js'):
+        for line in content:
+            if more_lines:
+                # End of multiple-lines comment
+                if line.find('*/'):
+                    print(line.split('*/')[0] + '*/')
+                    more_lines = False
+                else:
+                    print(line)
+            if line.find('/*') >= 0:
+                found = True
+                # If inline comment
+                if line.find('*/'):
+                    print('/*' + line.split('/*')[1].split('*/')[0] + '*/')
+                # Comment split on more lines
+                else:
+                    print('more line ' + line)
+                    more_lines = True
+                    print('/*' + line.split('/*')[1])
+            if line.find('#') >= 0:
+                print(line)
+        return
+
+    # TODO: add support for --!> closure
     for line in content:
         if more_lines:
             # End of multiple-lines comment
@@ -95,7 +121,6 @@ def print_all_comments(url):
                 more_lines = False
             else:
                 print(line)
-
         if line.find('<!--') >= 0:
             found = True
             # If inline comment
@@ -118,17 +143,17 @@ def main(args):
     # Scan for files
     if args.files or args.all:
         if not target_url.endswith('/'):
-            target_url += '/'
+            local_target_url = target_url + '/'
 
-        scan_for_files(target_url)
+        scan_for_files(local_target_url)
         conditional_print('\n')
 
     # Scan for directories
     if args.directories or args.all:
         if not target_url.endswith('/'):
-            target_url += '/'
+            local_target_url = target_url + '/'
 
-        scan_for_directories(target_url)
+        scan_for_directories(local_target_url)
         conditional_print('\n')
 
     if args.cookies or args.all:
