@@ -8,6 +8,9 @@ import requests
 VERBOSE = True
 QUIET = False
 
+# Cache the response
+response = 0
+
 # TODO: These should go in a file with possibility of comments starting with #
 files_list = ['robots.txt', '.gitignore']
 directories_list = ['.git/', '.well-known/']
@@ -25,7 +28,6 @@ def scan_for_files(url):
     # Check for files
     for file_name in files_list:
         conditional_print(f'Searching for file {file_name}')
-
         response = requests.get(url + file_name)
 
         if not response and not response.status_code == 400:
@@ -43,7 +45,6 @@ def scan_for_directories(url):
     # Check for files
     for dir_name in directories_list:
         conditional_print(f'Searching for directory {dir_name}')
-
         response = requests.get(url + dir_name)
 
         if not response and not response.status_code == 400:
@@ -60,7 +61,9 @@ def scan_for_cookies(url):
     conditional_print('Looking for Cookies')
     session = requests.Session()
     session.cookies.get_dict()
-    response = session.get(url)
+    global response
+    if response == 0:
+        response = session.get(url)
     cookies = session.cookies.get_dict()
     if cookies:
         print('Found Cookies')
@@ -71,7 +74,9 @@ def scan_for_cookies(url):
 
 def search_in_page(url, search):
     conditional_print(f'Looking for {search} in {url}')
-    response = requests.get(url)
+    global response
+    if response == 0:
+        response = requests.get(url)
     content = response.content.decode().split('\n')
     found = False
     for line in content:
@@ -81,10 +86,11 @@ def search_in_page(url, search):
     if not found:
         conditional_print(f'{search} not found')
 
-# TODO: add support for CSS comments if .css and JavaScript if .js
 def print_all_comments(url):
     conditional_print('Looking for comments in ' + url)
-    response = requests.get(url)
+    global response
+    if response == 0:
+        response = requests.get(url)
     content = response.content.decode().split('\n')
     more_lines = False
     found = False
@@ -112,12 +118,14 @@ def print_all_comments(url):
                 print(line)
         return
 
-    # TODO: add support for --!> closure
     for line in content:
         if more_lines:
             # End of multiple-lines comment
             if line.find('-->'):
                 print(line.split('-->')[0] + '-->')
+                more_lines = False
+            if line.find('--!>'):
+                print(line.split('--!>')[0] + '--!>')
                 more_lines = False
             else:
                 print(line)
@@ -126,6 +134,8 @@ def print_all_comments(url):
             # If inline comment
             if line.find('-->'):
                 print('<!--' + line.split('<!--')[1].split('-->')[0] + '-->')
+            if line.find('--!>'):
+                print('<!--' + line.split('<!--')[1].split('--!>')[0] + '--!>')
             # Comment split on more lines
             else:
                 more_lines = True
@@ -169,7 +179,7 @@ def main(args):
         search_in_page(target_url, search)
         conditional_print('\n')
 
-    if args.all:
+    if args.all and args.all != 'noterm':
         search = args.all
         search_in_page(target_url, search)
         conditional_print('\n')
@@ -207,8 +217,8 @@ if __name__ == '__main__':
     # Search in page
     parser.add_argument('-s', '--search', help='search for a string in the target website\'s code', action='store', type=str, metavar=('\"search term\"'))
 
-    # Search for everything TODO
-    parser.add_argument('-a', '--all', help='do everything', action='store', type=str, metavar=('\"search term\"'))
+    # Search for everything
+    parser.add_argument('-a', '--all', help='do everything (type noterm to skip search in page)', action='store', type=str, metavar=('\"search term\"'))
 
     # Argcomplete support
     argcomplete = importlib.util.find_spec('argcomplete')
